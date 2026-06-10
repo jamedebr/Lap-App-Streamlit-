@@ -96,7 +96,7 @@ def _loc_ios(key: str):
     iOS Safari's WebKit Geolocation API.
     Returns [lat, lon] or None.
     """
-    loc = _get_geo()
+    loc = _get_geo(key='geo')
     if loc and "coords" in loc:
         return [loc["coords"]["latitude"], loc["coords"]["longitude"]]
     return None
