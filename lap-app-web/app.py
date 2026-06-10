@@ -15,14 +15,14 @@ from supabase import create_client
 # To find coordinates: open Google Maps, right-click any spot,
 # and copy the numbers shown (latitude first, longitude second).
 #
-CP1 = [43.1234, -80.5678]   # ← Checkpoint 1   [lat, lon]
-CP2 = [43.2345, -80.6789]   # ← Checkpoint 2   [lat, lon]
-CP3 = [43.3456, -80.7890]   # ← Checkpoint 3   [lat, lon]
-CP4 = [43.4567, -80.8901]   # ← Checkpoint 4   [lat, lon]
+CP1 = [43.540951, -80.255961]   # ← Checkpoint 1   [lat, lon]
+CP2 = [43.541119, -80.256094]   # ← Checkpoint 2   [lat, lon]
+CP3 = [43.541163, -80.256000]   # ← Checkpoint 3   [lat, lon]
+CP4 = [43.5410022, -80.255871]   # ← Checkpoint 4   [lat, lon]
 
 # How close (in degrees) the user must be to trigger a checkpoint.
 # 0.0002° ≈ 22 metres.  Raise (e.g. 0.0005 ≈ 55 m) if triggers are too strict.
-CHECKPOINT_RADIUS = 0.00005
+CHECKPOINT_RADIUS = 0.0001
 # ============================================================
 
 
