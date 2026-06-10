@@ -6,10 +6,6 @@
 import hashlib
 import streamlit as st
 from supabase import create_client
-import streamlit_js_eval
-from streamlit_js_eval import get_geolocation
-
-print(inspect.signature(get_geolocation))
 
 # ============================================================
 #  CHECKPOINT COORDINATES — EDIT THESE TO CHANGE THE ROUTE
@@ -100,7 +96,7 @@ def _loc_ios(key: str):
     iOS Safari's WebKit Geolocation API.
     Returns [lat, lon] or None.
     """
-    loc = _get_geo(key=key)
+    loc = _get_geo()
     if loc and "coords" in loc:
         return [loc["coords"]["latitude"], loc["coords"]["longitude"]]
     return None
