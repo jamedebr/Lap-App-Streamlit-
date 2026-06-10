@@ -7,7 +7,9 @@ import hashlib
 import streamlit as st
 from supabase import create_client
 import streamlit_js_eval
-print(streamlit_js_eval.__version__)
+from streamlit_js_eval import get_geolocation
+
+print(inspect.signature(get_geolocation))
 
 # ============================================================
 #  CHECKPOINT COORDINATES — EDIT THESE TO CHANGE THE ROUTE
