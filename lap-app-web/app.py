@@ -6,7 +6,8 @@
 import hashlib
 import streamlit as st
 from supabase import create_client
-
+import streamlit_js_eval
+print(streamlit_js_eval.__version__)
 
 # ============================================================
 #  CHECKPOINT COORDINATES — EDIT THESE TO CHANGE THE ROUTE
