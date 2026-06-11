@@ -11,10 +11,10 @@ from supabase import create_client
 # ~0.0001 degrees ≈ 11 m; ~0.001 degrees ≈ 111 m — adjust for your course.
 # ---------------------------------------------------------------------------
 CHECKPOINTS = {
-    "cp1": [0.1234, 0.3456],
-    "cp2": [1.1234, 0.3456],
-    "cp3": [1.1234, 1.3456],
-    "cp4": [0.1234, 1.3456],
+    "cp1": [43.493045, -80.416328],
+    "cp2": [43.493446, -80.416336],
+    "cp3": [43.493610, -80.416313],
+    "cp4": [43.493358, -80.416084],
 }
 RADIUS_DEG = 0.0001       # ~11 m — increase if GPS drift causes missed checkpoints
 POLL_INTERVAL_MS = 5000   # how often JS polls GPS (milliseconds)
