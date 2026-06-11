@@ -96,11 +96,14 @@ def run_location_tracking() -> None:
     The autorefresh timer drives repeated calls.
     """
     location = get_geolocation()          # non-blocking JS bridge
+    print(f"Raw location response: {location}")
     if location and "coords" in location:
         lat = location["coords"]["latitude"]
         lon = location["coords"]["longitude"]
         print(f"GPS: {lat}, {lon}")
         process_location(lat, lon)
+    else:
+        print(f"No coords yet — full response: {location}")
 
 
 # --- Page: Sign In ---
