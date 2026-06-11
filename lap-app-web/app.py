@@ -16,7 +16,7 @@ CHECKPOINTS = {
     "cp3": [43.493610, -80.416313],
     "cp4": [43.493358, -80.416084],
 }
-RADIUS_DEG = 0.0001       # ~11 m — increase if GPS drift causes missed checkpoints
+RADIUS_DEG = 0.0003       # ~11 m — increase if GPS drift causes missed checkpoints
 POLL_INTERVAL_MS = 5000   # how often JS polls GPS (milliseconds)
 # ---------------------------------------------------------------------------
 
