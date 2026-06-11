@@ -99,6 +99,7 @@ def run_location_tracking() -> None:
     if location and "coords" in location:
         lat = location["coords"]["latitude"]
         lon = location["coords"]["longitude"]
+        print(f"GPS: {lat}, {lon}")
         process_location(lat, lon)
 
 
