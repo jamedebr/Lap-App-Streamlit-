@@ -2,6 +2,7 @@ import hashlib
 import json
 import streamlit as st
 import streamlit.components.v1 as components
+from streamlit_autorefresh import st_autorefresh
 from supabase import create_client
 
 # ---------------------------------------------------------------------------
@@ -18,6 +19,7 @@ CHECKPOINTS = {
 }
 RADIUS_DEG = 0.001       # ~11 m — increase if GPS drift causes missed checkpoints
 POLL_INTERVAL_MS = 5000   # how often JS polls GPS (milliseconds)
+REFRESH_INTERVAL_MS = 2000  # how often Python checks for new laps in the URL
 # ---------------------------------------------------------------------------
 
 
@@ -38,15 +40,31 @@ if "page" not in st.session_state:
     st.session_state.page = "signin"
 if "user_email" not in st.session_state:
     st.session_state.user_email = None
-if "pending_laps" not in st.session_state:
-    st.session_state.pending_laps = 0
+if "laps_offset" not in st.session_state:
+    st.session_state.laps_offset = 0
 
 
 # ---------------------------------------------------------------------------
-# Lap increment — called by Python after JS signals a completed lap
+# Read lap signal from URL query params and write to Supabase if new
 # ---------------------------------------------------------------------------
 
-def increment_laps(count: int = 1) -> None:
+def process_pending_laps() -> None:
+    """
+    JS writes ?laps=N into the URL via pushState (no page reload).
+    st_autorefresh triggers Python reruns so we can read it here.
+    laps_offset tracks what we've already processed this session.
+    """
+    try:
+        url_laps = int(st.query_params.get("laps", 0))
+    except (ValueError, TypeError):
+        url_laps = 0
+
+    new_laps = url_laps - st.session_state.laps_offset
+    if new_laps <= 0:
+        return
+
+    st.session_state.laps_offset = url_laps
+
     client = get_client()
     result = (
         client.table("accounts")
@@ -56,35 +74,36 @@ def increment_laps(count: int = 1) -> None:
     )
     if result.data:
         current_laps = result.data[0]["laps"]
-        new_laps = current_laps + count
+        updated = current_laps + new_laps
         client.table("accounts").update(
-            {"laps": new_laps}
+            {"laps": updated}
         ).eq("email", st.session_state.user_email).execute()
-        print(f"Lap recorded for {st.session_state.user_email} — total: {new_laps}")
+        print(f"Lap recorded for {st.session_state.user_email} — total now: {updated}")
 
 
 # ---------------------------------------------------------------------------
-# GPS component — all checkpoint logic runs in JS, only lap completions
-# are posted back to Python via a hidden Streamlit text input
+# GPS component — all checkpoint + lap logic lives in JS.
+# Uses pushState to update ?laps=N without a page reload so session
+# state is preserved. st_autorefresh polls for the change in Python.
 # ---------------------------------------------------------------------------
 
 def render_gps_component() -> None:
-    # Serialize checkpoint config to pass into JS
     cp_json = json.dumps(CHECKPOINTS)
 
-    # Each lap completion posts a message to the parent Streamlit frame.
-    # We receive it via a hidden st.query_params trick: JS sets a URL hash,
-    # which triggers a Streamlit rerun, and we read the lap count from it.
-    # To keep things simple and reliable we use a hidden st.text_input that
-    # JS writes to via the input's React synthetic event dispatch.
+    try:
+        current_url_laps = int(st.query_params.get("laps", 0))
+    except (ValueError, TypeError):
+        current_url_laps = 0
+
     gps_html = f"""
     <script>
     (function() {{
         const CHECKPOINTS = {cp_json};
-        const RADIUS = {RADIUS_DEG};
-        const INTERVAL = {POLL_INTERVAL_MS};
+        const RADIUS      = {RADIUS_DEG};
+        const INTERVAL    = {POLL_INTERVAL_MS};
 
-        // Checkpoint hit state — persists across polls within this page load
+        let lapCount = {current_url_laps};
+
         const hit = {{}};
         for (const key in CHECKPOINTS) hit[key] = false;
 
@@ -93,24 +112,14 @@ def render_gps_component() -> None:
                    Math.abs(lon - target[1]) < RADIUS;
         }}
 
-        function notifyLap() {{
-            // Find the hidden input Streamlit rendered and set its value,
-            // then fire the React change + blur events so Streamlit picks it up.
-            const inputs = window.parent.document.querySelectorAll('input[aria-label="lap_signal"]');
-            if (inputs.length === 0) {{
-                console.warn("lap_signal input not found");
-                return;
-            }}
-            const input = inputs[0];
-            const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
-                window.parent.HTMLInputElement.prototype, 'value'
-            ).set;
-            // Increment whatever value is already there so repeated laps work
-            const current = parseInt(input.value) || 0;
-            nativeInputValueSetter.call(input, current + 1);
-            input.dispatchEvent(new Event('input', {{ bubbles: true }}));
-            input.dispatchEvent(new Event('change', {{ bubbles: true }}));
-            input.blur();
+        function onLapComplete() {{
+            lapCount += 1;
+            console.log("Lap complete! Total laps this session:", lapCount);
+            // pushState updates the URL without a page reload,
+            // so Streamlit session state is preserved.
+            const url = new URL(window.parent.location.href);
+            url.searchParams.set("laps", lapCount);
+            window.parent.history.pushState({{}}, "", url.toString());
         }}
 
         function checkLocation() {{
@@ -120,7 +129,6 @@ def render_gps_component() -> None:
                     const lon = pos.coords.longitude;
                     console.log("GPS:", lat, lon);
 
-                    // Mark newly reached checkpoints
                     for (const key in CHECKPOINTS) {{
                         if (!hit[key] && near(lat, lon, CHECKPOINTS[key])) {{
                             hit[key] = true;
@@ -128,13 +136,9 @@ def render_gps_component() -> None:
                         }}
                     }}
 
-                    // Check if all checkpoints are done
-                    const allHit = Object.values(hit).every(Boolean);
-                    if (allHit) {{
-                        console.log("Lap complete!");
-                        // Reset all flags
+                    if (Object.values(hit).every(Boolean)) {{
                         for (const key in hit) hit[key] = false;
-                        notifyLap();
+                        onLapComplete();
                     }}
                 }},
                 function(err) {{
@@ -144,31 +148,13 @@ def render_gps_component() -> None:
             );
         }}
 
-        // Poll immediately then on interval
         checkLocation();
         setInterval(checkLocation, INTERVAL);
     }})();
     </script>
     """
 
-    # Render the JS (zero height, invisible)
     components.html(gps_html, height=0)
-
-    # Hidden input — JS writes lap completions here; Streamlit reads it
-    lap_signal = st.text_input("lap_signal", value="0", label_visibility="collapsed", key="lap_signal_input")
-
-    try:
-        laps_completed = int(lap_signal)
-    except (ValueError, TypeError):
-        laps_completed = 0
-
-    # If JS has signalled one or more new laps, process them
-    prev = st.session_state.pending_laps
-    if laps_completed > prev:
-        new_laps = laps_completed - prev
-        st.session_state.pending_laps = laps_completed
-        increment_laps(new_laps)
-        st.rerun()
 
 
 # --- Page: Sign In ---
@@ -194,8 +180,9 @@ def show_signin():
             )
             if result.data:
                 st.session_state.user_email = email
-                st.session_state.pending_laps = 0
+                st.session_state.laps_offset = 0
                 st.session_state.page = "home"
+                st.query_params.clear()
                 st.rerun()
             else:
                 st.error("Invalid email or password.")
@@ -232,8 +219,9 @@ def show_signup():
                 {"email": email, "password": hash_password(password), "laps": 0}
             ).execute()
             st.session_state.user_email = email
-            st.session_state.pending_laps = 0
+            st.session_state.laps_offset = 0
             st.session_state.page = "home"
+            st.query_params.clear()
             st.rerun()
     with col2:
         if st.button("Already have an account? Sign in", use_container_width=True):
@@ -244,7 +232,13 @@ def show_signup():
 # --- Page: Home / Leaderboard ---
 
 def show_home():
-    # GPS component runs silently in background
+    # Autorefresh triggers Python reruns so we can detect URL changes from JS
+    st_autorefresh(interval=REFRESH_INTERVAL_MS, key="lap_check_refresh")
+
+    # Check for any laps JS has written to the URL since last rerun
+    process_pending_laps()
+
+    # GPS component runs silently in the background
     render_gps_component()
 
     client = get_client()
@@ -281,8 +275,9 @@ def show_home():
 
     if st.button("Sign Out"):
         st.session_state.user_email = None
-        st.session_state.pending_laps = 0
+        st.session_state.laps_offset = 0
         st.session_state.page = "signin"
+        st.query_params.clear()
         st.rerun()
 
 
