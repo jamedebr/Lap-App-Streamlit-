@@ -18,7 +18,7 @@ CHECKPOINTS = {
     "cp4": [43.493358, -80.416084],
 }
 RADIUS_DEG = 0.0002       # ~11 m — increase if GPS drift causes missed checkpoints
-POLL_INTERVAL_MS = 5000   # how often JS polls GPS (milliseconds)
+POLL_INTERVAL_MS = 2000   # how often JS polls GPS (milliseconds)
 REFRESH_INTERVAL_MS = 2000  # how often Python checks for new laps in the URL
 # ---------------------------------------------------------------------------
 
