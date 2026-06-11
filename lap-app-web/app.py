@@ -11,10 +11,10 @@ from streamlit_autorefresh import st_autorefresh
 # ~0.0001 degrees ≈ 11 m; ~0.001 degrees ≈ 111 m — adjust for your course.
 # ---------------------------------------------------------------------------
 CHECKPOINTS = {
-    "cp1": [43.540951, -80.255961],
-    "cp2": [43.541119, -80.256094],
-    "cp3": [43.541163, -80.256000],
-    "cp4": [43.5410022, -80.255871],
+    "cp1": [43.493045, -80.416328],
+    "cp2": [43.493446, -80.416336],
+    "cp3": [43.493610, -80.416313],
+    "cp4": [43.493358, -80.416084],
 }
 RADIUS_DEG = 0.0001          # ~11 m — tighten or loosen as needed
 POLL_INTERVAL_MS = 5_000     # how often to re-check location (milliseconds)
