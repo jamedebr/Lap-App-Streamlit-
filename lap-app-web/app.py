@@ -1,7 +1,7 @@
 import hashlib
 import json
 import streamlit as st
-import st.iframe as components
+import streamlit.components.v1 as components
 from supabase import create_client
 
 # ---------------------------------------------------------------------------
