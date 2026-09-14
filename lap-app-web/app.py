@@ -30,8 +30,8 @@ def get_client():
     return create_client(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_KEY"])
 
 
-def hash_password(password: str) -> str:
-    return hashlib.sha256(password.encode()).hexdigest()
+#def hash_password(password: str) -> str:
+#    return hashlib.sha256(password.encode()).hexdigest()
 
 
 # --- Session state defaults ---
@@ -175,7 +175,7 @@ def show_signin():
                 client.table("accounts")
                 .select("*")
                 .eq("email", email)
-                .eq("password", hash_password(password))
+                .eq("password", password) #.eq("password", hash_password(password))
                 .execute()
             )
             if result.data:
@@ -216,7 +216,7 @@ def show_signup():
                 st.error("An account with that email already exists.")
                 return
             client.table("accounts").insert(
-                {"email": email, "password": hash_password(password), "laps": 0}
+                {"email": email, "password": password, "laps": 0} #{"email": email, "password": hash_password(password), "laps": 0}
             ).execute()
             st.session_state.user_email = email
             st.session_state.laps_offset = 0
