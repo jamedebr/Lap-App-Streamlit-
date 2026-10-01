@@ -122,34 +122,43 @@ def render_gps_component() -> None:
             window.parent.history.pushState({{}}, "", url.toString());
         }}
 
-        function checkLocation() {{
-            navigator.geolocation.getCurrentPosition(
-                function(pos) {{
-                    const lat = pos.coords.latitude;
-                    const lon = pos.coords.longitude;
-                    console.log("GPS:", lat, lon);
+                function handlePosition(pos) {{
+            const lat = pos.coords.latitude;
+            const lon = pos.coords.longitude;
+            console.log("GPS:", lat, lon);
 
-                    for (const key in CHECKPOINTS) {{
-                        if (!hit[key] && near(lat, lon, CHECKPOINTS[key])) {{
-                            hit[key] = true;
-                            console.log("Checkpoint hit:", key);
-                        }}
-                    }}
+            for (const key in CHECKPOINTS) {{
+                if (!hit[key] && near(lat, lon, CHECKPOINTS[key])) {{
+                    hit[key] = true;
+                    console.log("Checkpoint hit:", key);
+                }}
+            }}
 
-                    if (Object.values(hit).every(Boolean)) {{
-                        for (const key in hit) hit[key] = false;
-                        onLapComplete();
-                    }}
-                }},
-                function(err) {{
-                    console.warn("GPS error:", err.message);
-                }},
-                {{ enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }}
-            );
+            if (Object.values(hit).every(Boolean)) {{
+                for (const key in hit) hit[key] = false;
+                onLapComplete();
+            }}
         }}
 
-        checkLocation();
-        setInterval(checkLocation, INTERVAL);
+        navigator.geolocation.watchPosition(
+            handlePosition,
+            function(err) {{ console.warn("GPS error:", err.message); }},
+            {{ enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }}
+        );
+
+        // Keep the screen on while the page is visible
+        let wakeLock = null;
+        async function keepAwake() {{
+            try {{
+                wakeLock = await window.parent.navigator.wakeLock.request("screen");
+            }} catch (e) {{
+                console.warn("Wake lock unavailable:", e.message);
+            }}
+        }}
+        keepAwake();
+        window.parent.document.addEventListener("visibilitychange", function() {{
+            if (window.parent.document.visibilityState === "visible") keepAwake();
+        }});
     }})();
     </script>
     """
